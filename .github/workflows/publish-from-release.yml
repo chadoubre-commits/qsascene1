@@ -1,9 +1,9 @@
 name: Unzip release and publish to GitHub Pages
 
 on:
-  workflow_dispatch: {}        # allows manual trigger
+  workflow_dispatch:
   release:
-    types: [published]         # auto-runs when a release is published
+    types: [published]
 
 permissions:
   contents: write
@@ -14,27 +14,36 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout empty repo
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Download release asset
-        uses: ds500/git-download-release-asset@v1
+      - name: Download latest release asset
+        uses: robinraju/release-downloader@v1.8
         with:
-          owner: chadoubre-commits
-          repo: qsascene1
-          tag: v1.0
-          file: qsascene1tour.zip
+          repository: ${{ github.repository }}
+          latest: true
+          fileName: qsascene1.zip
 
-      - name: Verify SHA256
-        run: |
-          echo "5508f6abf15d879fa127eb6cf397c53b6afda6c80416e4d8013f174b78c35e34  qsascene1tour.zip" > SHA256SUMS
-          sha256sum -c SHA256SUMS
-
-      - name: Unzip to site directory
+      - name: Unzip asset
         run: |
           rm -rf site && mkdir site
-          unzip -q qsascene1tour.zip -d site
+          unzip qsascene1.zip -d site
 
-      - name: Upload artifact for Pages
-        use
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
 
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
