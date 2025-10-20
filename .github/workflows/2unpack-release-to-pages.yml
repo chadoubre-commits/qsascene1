@@ -1,0 +1,68 @@
+name: Unpack release ZIP and publish to GitHub Pages
+
+on:
+  workflow_dispatch: {}         # run manually
+  release:
+    types: [published]          # also runs when a release is published
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download latest release asset (qsascene1.zip)
+        uses: robinraju/release-downloader@v1.8
+        with:
+          repository: ${{ github.repository }}
+          latest: true
+          fileName: qsascene1.zip   # must match your Release asset name
+          out-file-path: .
+
+      - name: Unzip into site directory and flatten if needed
+        run: |
+          rm -rf site
+          mkdir -p site
+          unzip -o qsascene1.zip -d site
+          echo "After unzip:"
+          find site -maxdepth 2 -type f -name "index.html" -print
+
+          # If the ZIP contains a single top-level folder (e.g., site/qsascene1/index.html),
+          # move its contents up into site/
+          first_subdir="$(find site -mindepth 1 -maxdepth 1 -type d | head -n1)"
+          if [ -n "$first_subdir" ] && [ -f "$first_subdir/index.html" ]; then
+            shopt -s dotglob
+            mv "$first_subdir"/* site/
+            rmdir "$first_subdir"
+          fi
+
+          # Ensure index.html is at site/ root
+          test -f site/index.html || (echo "ERROR: index.html not found at site/ root" && exit 1)
+
+          echo "Final site/ contents (first two levels):"
+          find site -maxdepth 2 -print
+
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
