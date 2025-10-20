@@ -1,0 +1,40 @@
+name: Unzip release and publish to GitHub Pages
+
+on:
+  workflow_dispatch: {}        # allows manual trigger
+  release:
+    types: [published]         # auto-runs when a release is published
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout empty repo
+        uses: actions/checkout@v4
+
+      - name: Download release asset
+        uses: ds500/git-download-release-asset@v1
+        with:
+          owner: chadoubre-commits
+          repo: qsascene1
+          tag: v1.0
+          file: qsascene1tour.zip
+
+      - name: Verify SHA256
+        run: |
+          echo "5508f6abf15d879fa127eb6cf397c53b6afda6c80416e4d8013f174b78c35e34  qsascene1tour.zip" > SHA256SUMS
+          sha256sum -c SHA256SUMS
+
+      - name: Unzip to site directory
+        run: |
+          rm -rf site && mkdir site
+          unzip -q qsascene1tour.zip -d site
+
+      - name: Upload artifact for Pages
+        use
+
