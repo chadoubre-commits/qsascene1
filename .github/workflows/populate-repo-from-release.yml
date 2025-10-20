@@ -1,0 +1,41 @@
+name: Populate repo from release ZIP
+
+on:
+  workflow_dispatch: {}   # run manually from Actions tab
+
+permissions:
+  contents: write         # needed to commit files to the repo
+
+jobs:
+  populate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download release asset (qsascene1tour.zip @ v1.0)
+        uses: ds500/git-download-release-asset@v1
+        with:
+          owner: chadoubre-commits
+          repo: qsascene1
+          tag: v1.0
+          file: qsascene1tour.zip
+
+      - name: Verify SHA256
+        run: |
+          echo "5508f6abf15d879fa127eb6cf397c53b6afda6c80416e4d8013f174b78c35e34  qsascene1tour.zip" > SHA256SUMS
+          sha256sum -c SHA256SUMS
+
+      - name: Unzip into repository root (overwrite if exists)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y unzip
+          unzip -o qsascene1tour.zip -d .
+
+      - name: Commit unzipped files
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: "."
+          message: "Populate repo from release ZIP (v1.0)"
+          default_author: github_actions
+
